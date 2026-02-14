@@ -21,7 +21,7 @@ pub fn index_directory(
     {
         let path = entry.path();
         if path.is_file() && path.extension().map_or(false, |ext| ext == "md") {
-            let path_str = path.to_string_lossy().to_string();
+            let path_str = path.canonicalize()?.to_string_lossy().to_string();
 
             if !force {
                 if let Some(db_mtime) = db.get_mtime(&path_str)? {
