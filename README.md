@@ -132,7 +132,7 @@ Run tests with: `cargo test`
 - **CLI Framework:** clap v4.5 (derive feature)
 - **Database:** DuckDB via `duckdb` crate (bundled feature)
 - **File Discovery:** walkdir v2.5
-- **Parser:** serde_yaml (frontmatter), regex (wiki-links/tags)
+- **Parser:** gray_matter (frontmatter), regex (wiki-links/tags)
 - **Serialization:** serde, serde_json
 
 ## Project Structure
