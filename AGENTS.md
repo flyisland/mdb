@@ -6,13 +6,14 @@ The goal is to build a high-performance Command Line Interface (CLI) tool design
 
 ## 2. Technical Stack
 
-- **Language**: [Rust](https://rust-lang.org) 1.85+ (2024 edition)
-- **Database**: [DuckDB](https://duckdb.org) via [`duckdb`](https://docs.rs/duckdb) crate with bundled feature
+- **Language**: [Rust](https://rust-lang.org) 2024 edition
+- **Database**: [DuckDB](https://duckdb.org) via [`duckdb`](https://docs.rs/duckdb) crate with `bundled` and `chrono` features
 - **CLI Framework**: [`clap`](https://docs.rs/clap) v4.5 with derive features
 - **File Discovery**: [`walkdir`](https://docs.rs/walkdir) v2.5
 - **Frontmatter Parser**: [`serde_yaml`](https://docs.rs/serde_yaml) v0.9
 - **Pattern Matching**: [`regex`](https://docs.rs/regex) v1.10
 - **Serialization**: [`serde`](https://docs.rs/serde) v1.0 with derive features
+- **Date/Time**: [`chrono`](https://docs.rs/chrono) v0.4
 
 ### 2.1 Why Rust?
 
@@ -26,23 +27,23 @@ The project was migrated from Bun/TypeScript to Rust for:
 
 The DuckDB local file (`.mdb/mdb.duckdb`) utilizes the following schema to support Markdown structures:
 
-| Property   | Type    | Description                                                   |
-| ---------- | ------- | ------------------------------------------------------------- |
-| path       | TEXT    | Primary key - full file path                                  |
-| folder     | TEXT    | Directory path                                                |
-| name       | TEXT    | File name (without extension)                                 |
-| ext        | TEXT    | File extension                                                |
-| size       | INTEGER | File size in bytes                                            |
-| ctime      | BIGINT  | Created time (Unix timestamp)                                 |
-| mtime      | BIGINT  | Modified time (Unix timestamp)                                |
-| content    | TEXT    | File content (without frontmatter)                            |
-| tags       | TEXT    | JSON array of tags                                            |
-| links      | TEXT    | JSON array of wiki-links                                      |
-| backlinks  | TEXT    | JSON array of backlink files                                  |
-| embeds     | TEXT    | JSON array of embeds                                          |
-| properties | TEXT    | JSON object of frontmatter properties                         |
+| Property   | Type       | Description                                                   |
+| ---------- | ---------- | ------------------------------------------------------------- |
+| path       | TEXT       | Primary key - full file path                                  |
+| folder     | TEXT       | Directory path                                                |
+| name       | TEXT       | File name (without extension)                                 |
+| ext        | TEXT       | File extension                                                |
+| size       | INTEGER    | File size in bytes                                            |
+| ctime      | TIMESTAMPTZ| Created time                                                   |
+| mtime      | TIMESTAMPTZ| Modified time                                                 |
+| content    | TEXT       | File content (without frontmatter)                            |
+| tags       | VARCHAR[]  | Array of tags                                                 |
+| links      | VARCHAR[]  | Array of wiki-links                                           |
+| backlinks  | VARCHAR[]  | Array of backlink files                                        |
+| embeds     | VARCHAR[]  | Array of embeds                                               |
+| properties | JSON       | Frontmatter properties                                        |
 
-**Note**: Array/Object types stored as JSON strings for DuckDB compatibility
+**Note**: Array types stored as native VARCHAR[] arrays, properties as JSON.
 
 ### 3.1 Indexes
 ```sql
@@ -63,7 +64,7 @@ CREATE INDEX IF NOT EXISTS idx_name ON documents(name);
     - Calculate backlinks (reverse link lookup) post-indexing.
     - Insert documents using parameterized queries with `duckdb::params!`.
 - **Options**:
-    - `-b, --base-dir <path>` - Target directory (default: current)
+    - `-b, --base-dir <path>` - Target directory (default: current directory `.`)
     - `-f, --force` - Force re-index all files (ignore mtime)
     - `-v, --verbose` - Show detailed output
 
@@ -73,9 +74,9 @@ CREATE INDEX IF NOT EXISTS idx_name ON documents(name);
     - Parse SQL-like query expressions with field references, operators, and logical combinations
     - Support `file.*` namespace for file metadata (path, folder, name, ext, size, ctime, mtime)
     - Support `note.*` namespace for Markdown fields (content, tags, links, backlinks, embeds, properties)
-    - Support shorthand notation for frontmatter properties (e.g., `category` → `json_extract(properties, '$.category')`)
+    - Support shorthand notation for frontmatter properties (e.g., `category` → `json_extract_string(properties, '$.category')`)
     - Support comparison operators: `==`, `!=`, `>`, `<`, `>=`, `<=`, `=~` (pattern match)
-    - Support logical operators: `and`, `or` with proper precedence
+    - Support logical operators: `and`, `or` with proper precedence (and has higher precedence than or)
     - Support `has()` function for array containment checks
     - Compile queries to DuckDB SQL for execution
     - Timestamps displayed in human-readable format (YYYY-MM-DD HH:MM:SS)
@@ -135,6 +136,9 @@ pub struct Database {
 
 impl Database {
     pub fn new(path: &Path) -> Result<Self, Box<dyn std::error::Error>> {
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
         let conn = Connection::open(path)?;
         let db = Database { conn };
         db.init_schema()?;
@@ -165,14 +169,14 @@ while let Some(row) = rows.next()? {
 ### 5.4 Query System (query/)
 Located in `src/query/`:
 
-- **tokenizer.rs**: Tokenizes query expressions into tokens (Field, Operator, StringLiteral, NumberLiteral, LParen, RParen, Function, And, Or)
+- **tokenizer.rs**: Tokenizes query expressions into tokens (Field, Operator, StringLiteral, NumberLiteral, LParen, RParen, Comma, Function, And, Or, EOF)
   ```rust
   pub enum Token {
       Field(String),
       Operator(String),
       StringLiteral(String),
       NumberLiteral(String),
-      LParen, RParen,
+      LParen, RParen, Comma,
       Function(String),
       And, Or, EOF,
   }
@@ -197,7 +201,7 @@ Located in `src/query/`:
           // Handle file.* and note.* namespaces
       }
       // Shorthand frontmatter properties
-      format!("json_extract(properties, '$.{}')", field)
+      format!("json_extract_string(properties, '$.{}')", field)
   }
   ```
 
@@ -279,7 +283,7 @@ mdb/
 - Incremental updates via mtime comparison
 
 ### Technical Debt / Future Improvements
-- ✅ ~~Add unit tests for tokenizer, parser, and compiler~~ (Completed - 100 tests added)
+- ✅ ~~Add unit tests for tokenizer, parser, and compiler~~ (Completed - 84 tests added)
 - Add integration tests for full query pipeline
 - Benchmark performance against 10,000 files goal
 - Consider parallel processing for indexing
@@ -288,15 +292,15 @@ mdb/
 
 ### Test Coverage Summary
 
-**Unit Tests Implemented (100 tests total):**
+**Unit Tests Implemented (84 tests total):**
 
 | Module | Tests | Coverage |
 |--------|-------|----------|
 | `tokenizer.rs` | 13 | Field tokenization, operators, literals, functions, parentheses |
-| `parser.rs` | 13 | Expression parsing, operators, grouping, precedence |
+| `parser.rs` | 12 | Expression parsing, operators, grouping, precedence |
 | `compiler.rs` | 17 | SQL generation, field resolution, all operators |
-| `extractor.rs` | 17 | Frontmatter, tags, wiki-links, embeds, edge cases |
-| `db.rs` | 8 | Database operations, queries, CRUD |
-| `scanner.rs` | 13 | File scanning, indexing, backlinks, subdirectories |
-| `query/mod.rs` | 9 | Output formatting (table, JSON, list) |
-| `main.rs` | 10 | CLI options, default values, parsing |
+| `extractor.rs` | 18 | Frontmatter, tags, wiki-links, embeds, edge cases |
+| `db.rs` | 12 | Database operations, queries, CRUD |
+| `scanner.rs` | 10 | File scanning, indexing, backlinks, subdirectories |
+| `query/mod.rs` | 10 | Output formatting (table, JSON, list) |
+| `main.rs` | 4 | CLI options, default values, parsing |
