@@ -330,9 +330,36 @@ mdb-rs/
 - Incremental updates via mtime comparison
 
 ### Technical Debt / Future Improvements
-- Add unit tests for tokenizer, parser, and compiler
+- ✅ ~~Add unit tests for tokenizer, parser, and compiler~~ (Completed - 90 tests added)
 - Add integration tests for full query pipeline
 - Benchmark performance against 10,000 files goal
 - Consider parallel processing for indexing
 - Add configuration file support
 - Implement query result caching
+
+### Test Coverage Summary
+
+**Unit Tests Implemented (90 tests total):**
+
+| Module | Tests | Coverage |
+|--------|-------|----------|
+| `tokenizer.rs` | 13 | Field tokenization, operators, literals, functions, parentheses |
+| `parser.rs` | 13 | Expression parsing, operators, grouping, precedence |
+| `compiler.rs` | 17 | SQL generation, field resolution, all operators |
+| `extractor.rs` | 17 | Frontmatter, tags, wiki-links, embeds, edge cases |
+| `db.rs` | 8 | Database operations, queries, CRUD |
+| `scanner.rs` | 13 | File scanning, indexing, backlinks, subdirectories |
+| `query/mod.rs` | 9 | Output formatting (table, JSON, list) |
+
+**Test Execution:**
+```bash
+# Run all tests
+cargo test
+
+# Run with output
+cargo test -- --nocapture
+
+# Run specific module
+cargo test tokenizer::tests
+cargo test extractor::tests
+```

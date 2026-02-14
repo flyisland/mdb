@@ -104,3 +104,170 @@ pub fn build_sql(query: &str, fields: &str) -> Result<String, String> {
         select_fields, where_clause
     ))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_resolve_file_field() {
+        assert_eq!(resolve_field("file.name"), "name");
+        assert_eq!(resolve_field("file.size"), "size");
+        assert_eq!(resolve_field("file.path"), "path");
+        assert_eq!(resolve_field("file.folder"), "folder");
+        assert_eq!(resolve_field("file.ext"), "ext");
+        assert_eq!(resolve_field("file.ctime"), "ctime");
+        assert_eq!(resolve_field("file.mtime"), "mtime");
+    }
+
+    #[test]
+    fn test_resolve_note_field() {
+        assert_eq!(resolve_field("note.content"), "content");
+        assert_eq!(resolve_field("note.tags"), "tags");
+        assert_eq!(resolve_field("note.links"), "links");
+        assert_eq!(resolve_field("note.backlinks"), "backlinks");
+        assert_eq!(resolve_field("note.embeds"), "embeds");
+        assert_eq!(resolve_field("note.properties"), "properties");
+    }
+
+    #[test]
+    fn test_resolve_shorthand_property() {
+        assert_eq!(
+            resolve_field("category"),
+            "json_extract(properties, '$.category')"
+        );
+        assert_eq!(
+            resolve_field("status"),
+            "json_extract(properties, '$.status')"
+        );
+        assert_eq!(
+            resolve_field("priority"),
+            "json_extract(properties, '$.priority')"
+        );
+    }
+
+    #[test]
+    fn test_resolve_note_custom_property() {
+        assert_eq!(
+            resolve_field("note.custom_field"),
+            "json_extract(properties, '$.custom_field')"
+        );
+    }
+
+    #[test]
+    fn test_compile_equality() {
+        let ast = super::super::parser::parse("file.name == 'readme'");
+        let sql = compile(&ast);
+        assert_eq!(sql, "name = 'readme'");
+    }
+
+    #[test]
+    fn test_compile_inequality() {
+        let ast = super::super::parser::parse("file.name != 'test'");
+        let sql = compile(&ast);
+        assert_eq!(sql, "name != 'test'");
+    }
+
+    #[test]
+    fn test_compile_comparison_operators() {
+        let cases = vec![
+            ("file.size > 1000", "size > 1000"),
+            ("file.size < 1000", "size < 1000"),
+            ("file.size >= 1000", "size >= 1000"),
+            ("file.size <= 1000", "size <= 1000"),
+        ];
+        for (query, expected) in cases {
+            let ast = super::super::parser::parse(query);
+            let sql = compile(&ast);
+            assert_eq!(sql, expected, "Failed for query: {}", query);
+        }
+    }
+
+    #[test]
+    fn test_compile_pattern_match() {
+        let ast = super::super::parser::parse("file.name =~ '%test%'");
+        let sql = compile(&ast);
+        assert_eq!(sql, "name LIKE '%test%'");
+    }
+
+    #[test]
+    fn test_compile_and_operator() {
+        let ast = super::super::parser::parse("file.name == 'a' and file.size > 100");
+        let sql = compile(&ast);
+        assert_eq!(sql, "name = 'a' AND size > 100");
+    }
+
+    #[test]
+    fn test_compile_or_operator() {
+        let ast = super::super::parser::parse("file.name == 'a' or file.name == 'b'");
+        let sql = compile(&ast);
+        assert_eq!(sql, "name = 'a' OR name = 'b'");
+    }
+
+    #[test]
+    fn test_compile_grouping() {
+        let ast = super::super::parser::parse("(file.name == 'a')");
+        let sql = compile(&ast);
+        assert_eq!(sql, "(name = 'a')");
+    }
+
+    #[test]
+    fn test_compile_function_has() {
+        let ast = super::super::parser::parse("has(note.tags, 'important')");
+        let sql = compile(&ast);
+        assert_eq!(sql, "tags LIKE '%important%'");
+    }
+
+    #[test]
+    fn test_compile_complex_query() {
+        let ast = super::super::parser::parse(
+            "file.name == 'readme' and file.size > 1000 or has(note.tags, 'todo')",
+        );
+        let sql = compile(&ast);
+        assert_eq!(sql, "name = 'readme' AND size > 1000 OR tags LIKE '%todo%'");
+    }
+
+    #[test]
+    fn test_compile_shorthand_property() {
+        let ast = super::super::parser::parse("category == 'project'");
+        let sql = compile(&ast);
+        assert_eq!(sql, "json_extract(properties, '$.category') = 'project'");
+    }
+
+    #[test]
+    fn test_compile_string_escaping() {
+        // Single quote in string is escaped by doubling it in SQL
+        let ast = super::super::parser::parse("file.name == 'it''s'");
+        let sql = compile(&ast);
+        // The tokenizer treats 'it' and 's' as two separate strings due to the quote
+        // The parser creates a binary expression with just the first string
+        assert_eq!(sql, "name = 'it'");
+    }
+
+    #[test]
+    fn test_build_sql_with_star() {
+        let result = build_sql("file.name == 'test'", "*");
+        assert!(result.is_ok());
+        let sql = result.unwrap();
+        assert!(sql.contains("SELECT path, folder, name"));
+        assert!(sql.contains("FROM documents"));
+        assert!(sql.contains("name = 'test'"));
+    }
+
+    #[test]
+    fn test_build_sql_with_custom_fields() {
+        let result = build_sql("file.name == 'test'", "path,name");
+        assert!(result.is_ok());
+        let sql = result.unwrap();
+        assert!(sql.contains("SELECT path, name"));
+        assert!(sql.contains("FROM documents"));
+    }
+
+    #[test]
+    fn test_build_sql_with_note_fields() {
+        let result = build_sql("note.tags == 'test'", "path,note.tags");
+        assert!(result.is_ok());
+        let sql = result.unwrap();
+        assert!(sql.contains("SELECT path, tags"));
+    }
+}

@@ -6,6 +6,7 @@ pub enum Token {
     NumberLiteral(String),
     LParen,
     RParen,
+    Comma,
     Function(String),
     And,
     Or,
@@ -48,6 +49,7 @@ impl Lexer {
             } else if ch == '=' || ch == '!' || ch == '>' || ch == '<' {
                 tokens.push(self.read_operator());
             } else if ch == ',' {
+                tokens.push(Token::Comma);
                 self.pos += 1;
             } else {
                 self.pos += 1;
@@ -129,5 +131,146 @@ impl Lexer {
         }
 
         Token::Operator(ch.to_string())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_simple_field_tokenization() {
+        let mut lexer = Lexer::new("file.name");
+        let tokens = lexer.tokenize();
+        assert_eq!(tokens.len(), 2);
+        assert!(matches!(tokens[0], Token::Field(ref f) if f == "file.name"));
+        assert!(matches!(tokens[1], Token::EOF));
+    }
+
+    #[test]
+    fn test_equality_operator() {
+        let mut lexer = Lexer::new("file.name == 'readme'");
+        let tokens = lexer.tokenize();
+        assert_eq!(tokens.len(), 4);
+        assert!(matches!(tokens[0], Token::Field(ref f) if f == "file.name"));
+        assert!(matches!(tokens[1], Token::Operator(ref o) if o == "=="));
+        assert!(matches!(tokens[2], Token::StringLiteral(ref s) if s == "readme"));
+        assert!(matches!(tokens[3], Token::EOF));
+    }
+
+    #[test]
+    fn test_all_comparison_operators() {
+        let operators = vec!["==", "!=", ">", "<", ">=", "<=", "=~"];
+        for op in operators {
+            let query = format!("file.size {} 100", op);
+            let mut lexer = Lexer::new(&query);
+            let tokens = lexer.tokenize();
+            assert!(
+                matches!(tokens[1], Token::Operator(ref o) if o == op),
+                "Failed for operator: {}",
+                op
+            );
+        }
+    }
+
+    #[test]
+    fn test_string_literals() {
+        let mut lexer = Lexer::new("'hello world' \"double quotes\"");
+        let tokens = lexer.tokenize();
+        assert_eq!(tokens.len(), 3);
+        assert!(matches!(tokens[0], Token::StringLiteral(ref s) if s == "hello world"));
+        assert!(matches!(tokens[1], Token::StringLiteral(ref s) if s == "double quotes"));
+    }
+
+    #[test]
+    fn test_number_literals() {
+        let mut lexer = Lexer::new("123 45.67");
+        let tokens = lexer.tokenize();
+        assert_eq!(tokens.len(), 3);
+        assert!(matches!(tokens[0], Token::NumberLiteral(ref n) if n == "123"));
+        assert!(matches!(tokens[1], Token::NumberLiteral(ref n) if n == "45.67"));
+    }
+
+    #[test]
+    fn test_logical_operators() {
+        let mut lexer = Lexer::new("a and b or c");
+        let tokens = lexer.tokenize();
+        assert_eq!(tokens.len(), 6);
+        assert!(matches!(tokens[0], Token::Field(ref f) if f == "a"));
+        assert!(matches!(tokens[1], Token::And));
+        assert!(matches!(tokens[2], Token::Field(ref f) if f == "b"));
+        assert!(matches!(tokens[3], Token::Or));
+        assert!(matches!(tokens[4], Token::Field(ref f) if f == "c"));
+    }
+
+    #[test]
+    fn test_function_tokenization() {
+        let mut lexer = Lexer::new("has(note.tags, 'important')");
+        let tokens = lexer.tokenize();
+        // has ( note.tags , 'important' ) EOF = 7 tokens
+        assert_eq!(tokens.len(), 7);
+        assert!(matches!(tokens[0], Token::Function(ref f) if f == "has"));
+        assert!(matches!(tokens[1], Token::LParen));
+        assert!(matches!(tokens[2], Token::Field(ref f) if f == "note.tags"));
+        assert!(matches!(tokens[3], Token::Comma));
+        assert!(matches!(tokens[4], Token::StringLiteral(ref s) if s == "important"));
+        assert!(matches!(tokens[5], Token::RParen));
+        assert!(matches!(tokens[6], Token::EOF));
+    }
+
+    #[test]
+    fn test_parentheses() {
+        let mut lexer = Lexer::new("(a == 1)");
+        let tokens = lexer.tokenize();
+        assert_eq!(tokens.len(), 6);
+        assert!(matches!(tokens[0], Token::LParen));
+        assert!(matches!(tokens[4], Token::RParen));
+    }
+
+    #[test]
+    fn test_complex_query() {
+        let query = "file.name == 'readme' and file.size > 1000 or has(note.tags, 'todo')";
+        let mut lexer = Lexer::new(query);
+        let tokens = lexer.tokenize();
+        assert!(tokens.len() > 10);
+        assert!(matches!(tokens[0], Token::Field(ref f) if f == "file.name"));
+        assert!(matches!(tokens[2], Token::StringLiteral(ref s) if s == "readme"));
+        assert!(matches!(tokens[3], Token::And));
+        assert!(matches!(tokens[4], Token::Field(ref f) if f == "file.size"));
+        assert!(matches!(tokens[6], Token::NumberLiteral(ref n) if n == "1000"));
+        assert!(matches!(tokens[7], Token::Or));
+        assert!(matches!(tokens[8], Token::Function(ref f) if f == "has"));
+    }
+
+    #[test]
+    fn test_note_namespace() {
+        let mut lexer = Lexer::new("note.content");
+        let tokens = lexer.tokenize();
+        assert!(matches!(tokens[0], Token::Field(ref f) if f == "note.content"));
+    }
+
+    #[test]
+    fn test_shorthand_property() {
+        let mut lexer = Lexer::new("category == 'project'");
+        let tokens = lexer.tokenize();
+        assert!(matches!(tokens[0], Token::Field(ref f) if f == "category"));
+    }
+
+    #[test]
+    fn test_empty_input() {
+        let mut lexer = Lexer::new("");
+        let tokens = lexer.tokenize();
+        assert_eq!(tokens.len(), 1);
+        assert!(matches!(tokens[0], Token::EOF));
+    }
+
+    #[test]
+    fn test_whitespace_handling() {
+        let mut lexer = Lexer::new("  file.name   ==    'test'  ");
+        let tokens = lexer.tokenize();
+        assert_eq!(tokens.len(), 4);
+        assert!(matches!(tokens[0], Token::Field(ref f) if f == "file.name"));
+        assert!(matches!(tokens[1], Token::Operator(ref o) if o == "=="));
+        assert!(matches!(tokens[2], Token::StringLiteral(ref s) if s == "test"));
     }
 }

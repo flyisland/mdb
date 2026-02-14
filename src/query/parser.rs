@@ -109,7 +109,10 @@ impl Parser {
                         if matches!(self.current(), Token::RParen) {
                             break;
                         }
-                        self.advance();
+                        // Skip comma if present
+                        if matches!(self.current(), Token::Comma) {
+                            self.advance();
+                        }
                     }
                     self.advance();
                     return AstNode::FunctionCall { name, args };
@@ -138,4 +141,159 @@ pub fn parse(query: &str) -> AstNode {
     let tokens = lexer.tokenize();
     let mut parser = Parser::new(tokens);
     parser.parse()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_simple_field() {
+        let ast = parse("file.name");
+        assert!(matches!(ast, AstNode::Field(ref f) if f == "file.name"));
+    }
+
+    #[test]
+    fn test_parse_equality_comparison() {
+        let ast = parse("file.name == 'readme'");
+        match ast {
+            AstNode::Binary { left, op, right } => {
+                assert!(matches!(*left, AstNode::Field(ref f) if f == "file.name"));
+                assert_eq!(op, "==");
+                assert!(matches!(*right, AstNode::StringLiteral(ref s) if s == "readme"));
+            }
+            _ => panic!("Expected Binary node"),
+        }
+    }
+
+    #[test]
+    fn test_parse_numeric_comparison() {
+        let ast = parse("file.size > 1000");
+        match ast {
+            AstNode::Binary { left, op, right } => {
+                assert!(matches!(*left, AstNode::Field(ref f) if f == "file.size"));
+                assert_eq!(op, ">");
+                assert!(matches!(*right, AstNode::NumberLiteral(ref n) if n == "1000"));
+            }
+            _ => panic!("Expected Binary node"),
+        }
+    }
+
+    #[test]
+    fn test_parse_and_operator() {
+        let ast = parse("a == 1 and b == 2");
+        match ast {
+            AstNode::Binary { left, op, right } => {
+                assert_eq!(op, "AND");
+                assert!(matches!(*left, AstNode::Binary { .. }));
+                assert!(matches!(*right, AstNode::Binary { .. }));
+            }
+            _ => panic!("Expected Binary node with AND"),
+        }
+    }
+
+    #[test]
+    fn test_parse_or_operator() {
+        let ast = parse("a == 1 or b == 2");
+        match ast {
+            AstNode::Binary { left, op, right } => {
+                assert_eq!(op, "OR");
+                assert!(matches!(*left, AstNode::Binary { .. }));
+                assert!(matches!(*right, AstNode::Binary { .. }));
+            }
+            _ => panic!("Expected Binary node with OR"),
+        }
+    }
+
+    #[test]
+    fn test_parse_and_or_precedence() {
+        let ast = parse("a == 1 and b == 2 or c == 3");
+        match ast {
+            AstNode::Binary { left, op, right } => {
+                assert_eq!(op, "OR");
+                assert!(matches!(*left, AstNode::Binary { ref op, .. } if op == "AND"));
+                assert!(matches!(*right, AstNode::Binary { .. }));
+            }
+            _ => panic!("Expected OR at top level"),
+        }
+    }
+
+    #[test]
+    fn test_parse_grouping() {
+        let ast = parse("(a == 1)");
+        match ast {
+            AstNode::Grouping(expr) => {
+                assert!(matches!(*expr, AstNode::Binary { .. }));
+            }
+            _ => panic!("Expected Grouping node"),
+        }
+    }
+
+    #[test]
+    fn test_parse_complex_grouping() {
+        let ast = parse("(a == 1 or b == 2) and c == 3");
+        match ast {
+            AstNode::Binary { left, op, right } => {
+                assert_eq!(op, "AND");
+                assert!(matches!(*left, AstNode::Grouping(_)));
+                assert!(matches!(*right, AstNode::Binary { .. }));
+            }
+            _ => panic!("Expected Binary node"),
+        }
+    }
+
+    #[test]
+    fn test_parse_function_call() {
+        let ast = parse("has(note.tags, 'important')");
+        match ast {
+            AstNode::FunctionCall { name, args } => {
+                assert_eq!(name, "has");
+                assert_eq!(args.len(), 2);
+                assert!(matches!(args[0], AstNode::Field(ref f) if f == "note.tags"));
+                assert!(matches!(args[1], AstNode::StringLiteral(ref s) if s == "important"));
+            }
+            _ => panic!("Expected FunctionCall node"),
+        }
+    }
+
+    #[test]
+    fn test_parse_all_operators() {
+        let operators = vec!["==", "!=", ">", "<", ">=", "<=", "=~"];
+        for op in operators {
+            let query = format!("file.size {} 100", op);
+            let ast = parse(&query);
+            match ast {
+                AstNode::Binary { op: parsed_op, .. } => {
+                    assert_eq!(parsed_op, op, "Operator {} was not parsed correctly", op);
+                }
+                _ => panic!("Expected Binary node for operator {}", op),
+            }
+        }
+    }
+
+    #[test]
+    fn test_parse_pattern_match() {
+        let ast = parse("file.name =~ '%test%'");
+        match ast {
+            AstNode::Binary { left, op, right } => {
+                assert!(matches!(*left, AstNode::Field(ref f) if f == "file.name"));
+                assert_eq!(op, "=~");
+                assert!(matches!(*right, AstNode::StringLiteral(ref s) if s == "%test%"));
+            }
+            _ => panic!("Expected Binary node"),
+        }
+    }
+
+    #[test]
+    fn test_parse_nested_function_calls() {
+        let ast = parse("has(note.tags, 'a') and has(note.links, 'b')");
+        match ast {
+            AstNode::Binary { left, op, right } => {
+                assert_eq!(op, "AND");
+                assert!(matches!(*left, AstNode::FunctionCall { .. }));
+                assert!(matches!(*right, AstNode::FunctionCall { .. }));
+            }
+            _ => panic!("Expected Binary node with AND"),
+        }
+    }
 }

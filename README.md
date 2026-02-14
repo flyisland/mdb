@@ -91,12 +91,28 @@ cargo run -- query -q "file.name == 'readme'"
 # Run tests
 cargo test
 
+# Run tests with output
+cargo test -- --nocapture
+
 # Build release
 cargo build --release
 
 # Run with verbose output
 cargo run -- index -d ./notes -v
 ```
+
+## Testing
+
+The project includes comprehensive unit tests covering all major components:
+
+- **90 total tests** across all modules
+- **Query System**: Tokenizer, parser, compiler, and SQL generation
+- **Content Extraction**: Frontmatter, tags, wiki-links, embeds
+- **Database**: CRUD operations, queries, and filtering
+- **Scanner**: File discovery, indexing, and backlink tracking
+- **Output**: Table, JSON, and list formatting
+
+Run tests with: `cargo test`
 
 ## Tech Stack
 
