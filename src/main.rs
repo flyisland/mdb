@@ -17,15 +17,15 @@ struct Cli {
     #[command(subcommand)]
     command: Commands,
 
-    #[arg(short, long, default_value = "docs.duckdb")]
+    #[arg(short, long, default_value = ".mdb/mdb.duckdb")]
     database: PathBuf,
 }
 
 #[derive(Subcommand)]
 enum Commands {
     Index {
-        #[arg(short, long, default_value = ".")]
-        directory: PathBuf,
+        #[arg(short = 'b', long = "base-dir", default_value = ".")]
+        base_dir: PathBuf,
 
         #[arg(short, long)]
         force: bool,
@@ -55,12 +55,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     match cli.command {
         Commands::Index {
-            directory,
+            base_dir,
             force,
             verbose,
         } => {
             let db = db.lock().unwrap();
-            scanner::index_directory(&directory, &db, force, verbose)?;
+            scanner::index_directory(&base_dir, &db, force, verbose)?;
         }
         Commands::Query {
             query,

@@ -24,7 +24,7 @@ The project was migrated from Bun/TypeScript to Rust for:
 
 ## 3. Data Schema
 
-The DuckDB local file (`docs.duckdb`) utilizes the following schema to support Markdown structures:
+The DuckDB local file (`.mdb/mdb.duckdb`) utilizes the following schema to support Markdown structures:
 
 | Property   | Type    | Description                                                   |
 | ---------- | ------- | ------------------------------------------------------------- |
@@ -63,7 +63,7 @@ CREATE INDEX IF NOT EXISTS idx_name ON documents(name);
     - Calculate backlinks (reverse link lookup) post-indexing.
     - Insert documents using parameterized queries with `duckdb::params!`.
 - **Options**:
-    - `-d, --directory <path>` - Target directory (default: current)
+    - `-b, --base-dir <path>` - Target directory (default: current)
     - `-f, --force` - Force re-index all files (ignore mtime)
     - `-v, --verbose` - Show detailed output
 
@@ -211,7 +211,7 @@ Using clap derive macros:
 struct Cli {
     #[command(subcommand)]
     command: Commands,
-    #[arg(short, long, default_value = "docs.duckdb")]
+    #[arg(short, long, default_value = ".mdb/mdb.duckdb")]
     database: PathBuf,
 }
 
@@ -273,7 +273,7 @@ mdb query -q "file.name == 'readme'" -o list
 cargo build
 
 # Run with arguments
-cargo run -- index -d ./notes -v
+cargo run -- index --base-dir ./notes -v
 cargo run -- query -q "has(note.tags, 'todo')" -o json
 
 # Run tests

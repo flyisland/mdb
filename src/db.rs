@@ -25,6 +25,9 @@ pub struct Database {
 
 impl Database {
     pub fn new(path: &Path) -> Result<Self, Box<dyn std::error::Error>> {
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
         let conn = Connection::open(path)?;
         let db = Database { conn };
         db.init_schema()?;

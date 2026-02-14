@@ -30,7 +30,7 @@ cargo build --release
 
 ```bash
 # Index notes
-mdb index -d ./my-notes
+mdb index --base-dir ./my-notes
 
 # Query notes
 mdb query -q "has(note.tags, 'todo')"
@@ -42,9 +42,9 @@ mdb query -q "has(note.tags, 'todo')"
 Scans Markdown files and indexes to DuckDB.
 
 ```bash
-mdb index -d ./notes        # Index directory
-mdb index -d ./notes -f     # Force re-index
-mdb index -d ./notes -v     # Verbose
+mdb index --base-dir ./notes        # Index base directory
+mdb index --base-dir ./notes -f     # Force re-index
+mdb index --base-dir ./notes -v     # Verbose
 ```
 
 ### `query`
@@ -85,7 +85,7 @@ mdb query -q "file.name == 'readme'" -F "path,name,size"
 cargo build
 
 # Run in development
-cargo run -- index -d ./notes
+cargo run -- index --base-dir ./notes
 cargo run -- query -q "file.name == 'readme'"
 
 # Run tests
@@ -98,7 +98,7 @@ cargo test -- --nocapture
 cargo build --release
 
 # Run with verbose output
-cargo run -- index -d ./notes -v
+cargo run -- index --base-dir ./notes -v
 ```
 
 ## Testing
