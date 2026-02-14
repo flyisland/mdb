@@ -160,7 +160,13 @@ mod tests {
         assert!(result.is_ok());
 
         let mtime = db
-            .get_mtime(&test_dir.join("test.md").to_string_lossy())
+            .get_mtime(
+                &test_dir
+                    .join("test.md")
+                    .canonicalize()
+                    .unwrap()
+                    .to_string_lossy(),
+            )
             .unwrap();
         assert!(mtime.is_some());
 
@@ -247,6 +253,8 @@ See [[other]] for more."#;
 
         let links = &link_map[&test_dir
             .join("with_frontmatter.md")
+            .canonicalize()
+            .unwrap()
             .to_string_lossy()
             .to_string()];
         assert!(links.contains(&"other".to_string()));
@@ -287,7 +295,13 @@ See [[other]] for more."#;
         assert!(result.is_ok());
 
         let mtime = db
-            .get_mtime(&test_dir.join("tagged.md").to_string_lossy())
+            .get_mtime(
+                &test_dir
+                    .join("tagged.md")
+                    .canonicalize()
+                    .unwrap()
+                    .to_string_lossy(),
+            )
             .unwrap();
         assert!(mtime.is_some());
 
@@ -309,7 +323,13 @@ See [[other]] for more."#;
         assert!(result.is_ok());
 
         let mtime = db
-            .get_mtime(&test_dir.join("with_embeds.md").to_string_lossy())
+            .get_mtime(
+                &test_dir
+                    .join("with_embeds.md")
+                    .canonicalize()
+                    .unwrap()
+                    .to_string_lossy(),
+            )
             .unwrap();
         assert!(mtime.is_some());
 
@@ -327,7 +347,13 @@ See [[other]] for more."#;
         // First index
         index_directory(&test_dir, &db, false, false).unwrap();
         let mtime1 = db
-            .get_mtime(&test_dir.join("test.md").to_string_lossy())
+            .get_mtime(
+                &test_dir
+                    .join("test.md")
+                    .canonicalize()
+                    .unwrap()
+                    .to_string_lossy(),
+            )
             .unwrap();
 
         // Wait a bit and update file
@@ -337,7 +363,13 @@ See [[other]] for more."#;
         // Re-index with force
         index_directory(&test_dir, &db, true, false).unwrap();
         let mtime2 = db
-            .get_mtime(&test_dir.join("test.md").to_string_lossy())
+            .get_mtime(
+                &test_dir
+                    .join("test.md")
+                    .canonicalize()
+                    .unwrap()
+                    .to_string_lossy(),
+            )
             .unwrap();
 
         // Should have been updated

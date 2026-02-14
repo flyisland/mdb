@@ -66,6 +66,10 @@ fn output_table(
     results: &[Vec<String>],
     field_names: &[String],
 ) -> Result<(), Box<dyn std::error::Error>> {
+    if results.is_empty() {
+        return Ok(());
+    }
+
     let col_count = results[0].len();
     let display_names: Vec<String> = (0..col_count)
         .map(|i| {
