@@ -223,36 +223,6 @@ enum Commands {
 }
 ```
 
-### 5.6 Query Examples
-```bash
-# Equality
-mdb query -q "file.name == 'readme'"
-
-# Comparison
-mdb query -q "file.size > 1000"
-mdb query -q "file.mtime > '2024-01-01'"
-
-# Pattern matching
-mdb query -q "file.name =~ '%test%'"
-
-# Logical operators
-mdb query -q "file.name == 'readme' and file.mtime > '2024-01-01'"
-mdb query -q "file.name == 'a' or file.name == 'b'"
-
-# Array containment
-mdb query -q "has(note.tags, 'important')"
-
-# Shorthand properties (frontmatter)
-mdb query -q "category == 'project'"
-
-# Field selection (default: file.path, file.mtime)
-mdb query -q "file.name == 'readme'" -f "path,name,size"
-
-# Output formats
-mdb query -q "file.name == 'readme'" -o json
-mdb query -q "file.name == 'readme'" -o list
-```
-
 ## 6. Performance Goals
 - **Indexing Speed**: < 5 seconds for 10,000 files (cold start).
 - **Search Latency**: < 50ms for complex queries on 10,000 rows.
@@ -269,29 +239,7 @@ mdb query -q "file.name == 'readme'" -o list
 
 ## 8. Development Commands
 
-```bash
-# Build debug version
-cargo build
-
-# Run with arguments
-cargo run -- index --base-dir ./notes -v
-cargo run -- query -q "has(note.tags, 'todo')" -o json
-
-# Run tests
-cargo test
-
-# Build optimized release
-cargo build --release
-
-# Check code without building
-cargo check
-
-# Format code
-cargo fmt
-
-# Run clippy lints
-cargo clippy
-```
+See [README.md](./README.md#development) for usage examples.
 
 ## 9. Project Structure
 
@@ -331,7 +279,7 @@ mdb/
 - Incremental updates via mtime comparison
 
 ### Technical Debt / Future Improvements
-- ✅ ~~Add unit tests for tokenizer, parser, and compiler~~ (Completed - 90 tests added)
+- ✅ ~~Add unit tests for tokenizer, parser, and compiler~~ (Completed - 100 tests added)
 - Add integration tests for full query pipeline
 - Benchmark performance against 10,000 files goal
 - Consider parallel processing for indexing
@@ -352,16 +300,3 @@ mdb/
 | `scanner.rs` | 13 | File scanning, indexing, backlinks, subdirectories |
 | `query/mod.rs` | 9 | Output formatting (table, JSON, list) |
 | `main.rs` | 10 | CLI options, default values, parsing |
-
-**Test Execution:**
-```bash
-# Run all tests
-cargo test
-
-# Run with output
-cargo test -- --nocapture
-
-# Run specific module
-cargo test tokenizer::tests
-cargo test extractor::tests
-```
