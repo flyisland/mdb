@@ -10,7 +10,7 @@ The goal is to build a high-performance Command Line Interface (CLI) tool design
 - **Database**: [DuckDB](https://duckdb.org) via [`duckdb`](https://docs.rs/duckdb) crate with `bundled` and `chrono` features
 - **CLI Framework**: [`clap`](https://docs.rs/clap) v4.5 with derive features
 - **File Discovery**: [`walkdir`](https://docs.rs/walkdir) v2.5
-- **Frontmatter Parser**: [`gray_matter`](https://docs.rs/gray_matter) v0.9
+- **Frontmatter Parser**: [`gray_matter`](https://docs.rs/gray_matter) v0.3
 - **Pattern Matching**: [`regex`](https://docs.rs/regex) v1.10
 - **Serialization**: [`serde`](https://docs.rs/serde) v1.0 with derive features
 - **Date/Time**: [`chrono`](https://docs.rs/chrono) v0.4
