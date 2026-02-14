@@ -214,8 +214,8 @@ Using clap derive macros:
 struct Cli {
     #[command(subcommand)]
     command: Commands,
-    #[arg(short, long, default_value = ".mdb/mdb.duckdb")]
-    database: PathBuf,
+    #[arg(short, long)]
+    database: Option<PathBuf>,
 }
 
 #[derive(Subcommand)]
