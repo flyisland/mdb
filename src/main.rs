@@ -4,10 +4,14 @@ mod query;
 mod scanner;
 
 use clap::{Parser, Subcommand, ValueEnum};
+use std::env;
 use std::path::PathBuf;
 use std::sync::Mutex;
 
 use crate::db::Database;
+
+const ENV_DATABASE: &str = "MDB_DATABASE";
+const ENV_BASE_DIR: &str = "MDB_BASE_DIR";
 
 #[derive(Clone, ValueEnum, Debug, PartialEq)]
 enum OutputFormat {
@@ -24,16 +28,30 @@ struct Cli {
     #[command(subcommand)]
     command: Commands,
 
-    #[arg(short, long, default_value = ".mdb/mdb.duckdb")]
-    database: PathBuf,
+    #[arg(
+        short,
+        long,
+        env = ENV_DATABASE,
+        global = true,
+        help_heading = "Environment Variables",
+        help = "Path to DuckDB database (default: .mdb/mdb.duckdb)"
+    )]
+    database: Option<PathBuf>,
+
+    #[arg(
+        short = 'b',
+        long = "base-dir",
+        env = ENV_BASE_DIR,
+        global = true,
+        help_heading = "Environment Variables",
+        help = "Directory to index (default: .)"
+    )]
+    base_dir: Option<PathBuf>,
 }
 
 #[derive(Subcommand)]
 enum Commands {
     Index {
-        #[arg(short = 'b', long = "base-dir", default_value = ".")]
-        base_dir: PathBuf,
-
         #[arg(short, long)]
         force: bool,
 
@@ -59,19 +77,30 @@ enum Commands {
     },
 }
 
+fn get_database_path() -> PathBuf {
+    env::var(ENV_DATABASE)
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| PathBuf::from(".mdb/mdb.duckdb"))
+}
+
+fn get_base_dir() -> PathBuf {
+    env::var(ENV_BASE_DIR)
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| PathBuf::from("."))
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
 
-    let db = Mutex::new(Database::new(&cli.database)?);
+    let db_path = cli.database.unwrap_or_else(get_database_path);
+
+    let db = Mutex::new(Database::new(&db_path)?);
 
     match cli.command {
-        Commands::Index {
-            base_dir,
-            force,
-            verbose,
-        } => {
+        Commands::Index { force, verbose } => {
+            let base = cli.base_dir.unwrap_or_else(get_base_dir);
             let db = db.lock().unwrap();
-            scanner::index_directory(&base_dir, &db, force, verbose)?;
+            scanner::index_directory(&base, &db, force, verbose)?;
         }
         Commands::Query {
             query,

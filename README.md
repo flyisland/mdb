@@ -80,6 +80,28 @@ mdb query -q "category == 'project'" -f "path,note.author,category"
 
 **Note:** Timestamps are displayed in human-readable format (YYYY-MM-DD HH:MM:SS)
 
+## Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `MDB_DATABASE` | Path to DuckDB database | `.mdb/mdb.duckdb` |
+| `MDB_BASE_DIR` | Base directory for indexing | `.` |
+
+**Priority:** CLI arguments > Environment variables > Defaults
+
+```bash
+# Set environment variables
+export MDB_DATABASE=/path/to/db.duckdb
+export MDB_BASE_DIR=/path/to/notes
+
+# Use environment variables
+mdb query -q "has(tags, 'design')"
+
+# CLI arguments override environment variables
+mdb --database /other/db.duckdb query -q "..."
+mdb index -b /other/dir
+```
+
 ## Features
 
 - Fast indexing with DuckDB
