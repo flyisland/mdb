@@ -1,3 +1,5 @@
+use gray_matter::engine::YAML;
+use gray_matter::Matter;
 use regex::Regex;
 use serde_json::Value;
 
@@ -24,17 +26,17 @@ impl Extractor {
     }
 
     fn parse_frontmatter(content: &str) -> (Value, String) {
-        if content.starts_with("---") {
-            if let Some(end_idx) = content[3..].find("---") {
-                let yaml_content = &content[3..end_idx + 3];
-                let remaining = &content[end_idx + 6..];
-
-                if let Ok(props) = serde_yaml::from_str::<Value>(yaml_content) {
-                    return (props, remaining.trim().to_string());
-                }
+        let matter = Matter::<YAML>::new();
+        match matter.parse::<Value>(content) {
+            Ok(result) => {
+                let frontmatter = result
+                    .data
+                    .map(|v| serde_json::to_value(v).unwrap_or(Value::Null))
+                    .unwrap_or(Value::Null);
+                (frontmatter, result.content)
             }
+            Err(_) => (Value::Null, content.to_string()),
         }
-        (Value::Null, content.to_string())
     }
 
     fn extract_tags(content: &str) -> Vec<String> {
