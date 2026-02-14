@@ -72,9 +72,9 @@ CREATE INDEX IF NOT EXISTS idx_name ON documents(name);
 - **Behavior**: Query indexed files with SQL-like expressions.
 - **Functionality**: 
     - Parse SQL-like query expressions with field references, operators, and logical combinations
-    - Support `file.*` namespace for file metadata (path, folder, name, ext, size, ctime, mtime)
-    - Support `note.*` namespace for Markdown fields (content, tags, links, backlinks, embeds, properties)
-    - Support shorthand notation for frontmatter properties (e.g., `category` → `json_extract_string(properties, '$.category')`)
+    - Support `file.*` namespace for native table columns (path, folder, name, ext, size, ctime, mtime, content, tags, links, backlinks, embeds)
+    - Support `note.*` namespace for user-defined frontmatter properties (e.g., `note.alias` → `json_extract(properties, '$.alias')`)
+    - Support shorthand notation: unprefixed identifiers resolve to native columns first, then frontmatter properties
     - Support comparison operators: `==`, `!=`, `>`, `<`, `>=`, `<=`, `=~` (pattern match)
     - Support logical operators: `and`, `or` with proper precedence (and has higher precedence than or)
     - Support `has()` function for array containment checks
@@ -200,7 +200,7 @@ Located in `src/query/`:
       if field.contains('.') {
           // Handle file.* and note.* namespaces
       }
-      // Shorthand frontmatter properties
+      // Shorthand: native columns first, then frontmatter properties
       format!("json_extract_string(properties, '$.{}')", field)
   }
   ```
@@ -292,7 +292,7 @@ mdb/
 
 ### Test Coverage Summary
 
-**Unit Tests Implemented (84 tests total):**
+**Unit Tests Implemented (97 tests total):**
 
 | Module | Tests | Coverage |
 |--------|-------|----------|

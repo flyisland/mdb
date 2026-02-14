@@ -33,7 +33,7 @@ cargo build --release
 mdb index --base-dir ./my-notes
 
 # Query notes
-mdb query -q "has(note.tags, 'todo')"
+mdb query -q "has(tags, 'todo')"
 ```
 
 ## Commands
@@ -51,24 +51,32 @@ mdb index --base-dir ./notes -v     # Verbose
 Query indexed files with SQL-like expressions.
 
 ```bash
-# Basic queries
-mdb query -q "has(note.tags, 'project')"
-mdb query -q "file.folder =~ '%projects%'"
-mdb query -q "file.mtime > '2024-01-01'"
+# Basic queries (shorthand - native columns and frontmatter properties)
+mdb query -q "has(tags, 'project')"
+mdb query -q "category == 'work'"
+mdb query -q "folder =~ '%projects%'"
+mdb query -q "mtime > '2024-01-01'"
+
+# Explicit namespace usage (file.* for native columns, note.* for frontmatter)
+mdb query -q "has(file.tags, 'todo')"
+mdb query -q "note.author == 'John'"
 
 # Output formats
-mdb query -q "has(note.tags, 'todo')" -o json
-mdb query -q "has(note.tags, 'todo')" -o list
+mdb query -q "has(tags, 'todo')" -o json
+mdb query -q "has(tags, 'todo')" -o list
 
 # Select fields (default: file.path, file.mtime)
-mdb query -q "file.name == 'readme'" -f "path,name,size"
+mdb query -q "name == 'readme'" -f "path,name,size"
+mdb query -q "category == 'project'" -f "path,note.author,category"
 ```
 
-**Fields:** `file.path`, `file.folder`, `file.name`, `file.ext`, `file.size`, `file.ctime`, `file.mtime`, `note.content`, `note.tags`, `note.links`, `note.backlinks`, `note.embeds`, `note.properties`
+**Fields:** Native columns (`path`, `folder`, `name`, `ext`, `size`, `ctime`, `mtime`, `content`, `tags`, `links`, `backlinks`, `embeds`) and frontmatter properties (e.g., `author`, `category`). Use `file.*` prefix for explicit namespace or shorthand for convenience.
 
 **Operators:** `==`, `!=`, `>`, `<`, `>=`, `<=`, `=~` (LIKE), `and`, `or`
 
 **Functions:** `has(field, value)` - array containment
+
+**Note:** Shorthand notation allows concise field names - native columns (path, folder, name, tags, etc.) resolve directly, while unknown identifiers resolve to frontmatter properties. Use explicit namespaces (`file.*`, `note.*`) when needed for clarity.
 
 **Note:** Timestamps are displayed in human-readable format (YYYY-MM-DD HH:MM:SS)
 
@@ -80,6 +88,7 @@ mdb query -q "file.name == 'readme'" -f "path,name,size"
 - Incremental updates
 - Multiple output formats (table, json, list)
 - Human-readable timestamps
+- Shorthand field notation for conciseness
 
 ## Development
 
@@ -108,7 +117,7 @@ cargo run -- index --base-dir ./notes -v
 
 The project includes comprehensive unit tests covering all major components:
 
-- **100 total tests** across all modules
+- **97 total tests** across all modules
 - **Query System**: Tokenizer, parser, compiler, and SQL generation
 - **Content Extraction**: Frontmatter, tags, wiki-links, embeds
 - **Database**: CRUD operations, queries, and filtering

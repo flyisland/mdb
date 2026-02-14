@@ -1,13 +1,18 @@
 use super::parser::AstNode;
 
-const FILE_FIELDS: &[&str] = &["path", "folder", "name", "ext", "size", "ctime", "mtime"];
-const NOTE_FIELDS: &[&str] = &[
+const FILE_FIELDS: &[&str] = &[
+    "path",
+    "folder",
+    "name",
+    "ext",
+    "size",
+    "ctime",
+    "mtime",
     "content",
     "tags",
     "links",
     "backlinks",
     "embeds",
-    "properties",
 ];
 
 pub fn resolve_field(field: &str) -> String {
@@ -20,9 +25,6 @@ pub fn resolve_field(field: &str) -> String {
                 return name.to_string();
             }
             if prefix == "note" {
-                if NOTE_FIELDS.contains(&name) {
-                    return name.to_string();
-                }
                 return format!("json_extract_string(properties, '$.{}')", name);
             }
         }
@@ -30,10 +32,6 @@ pub fn resolve_field(field: &str) -> String {
     }
 
     if FILE_FIELDS.contains(&field) {
-        return field.to_string();
-    }
-
-    if NOTE_FIELDS.contains(&field) {
         return field.to_string();
     }
 
@@ -118,16 +116,23 @@ mod tests {
         assert_eq!(resolve_field("file.ext"), "ext");
         assert_eq!(resolve_field("file.ctime"), "ctime");
         assert_eq!(resolve_field("file.mtime"), "mtime");
+        assert_eq!(resolve_field("file.content"), "content");
+        assert_eq!(resolve_field("file.tags"), "tags");
+        assert_eq!(resolve_field("file.links"), "links");
+        assert_eq!(resolve_field("file.backlinks"), "backlinks");
+        assert_eq!(resolve_field("file.embeds"), "embeds");
     }
 
     #[test]
-    fn test_resolve_note_field() {
-        assert_eq!(resolve_field("note.content"), "content");
-        assert_eq!(resolve_field("note.tags"), "tags");
-        assert_eq!(resolve_field("note.links"), "links");
-        assert_eq!(resolve_field("note.backlinks"), "backlinks");
-        assert_eq!(resolve_field("note.embeds"), "embeds");
-        assert_eq!(resolve_field("note.properties"), "properties");
+    fn test_resolve_note_property() {
+        assert_eq!(
+            resolve_field("note.custom_field"),
+            "json_extract_string(properties, '$.custom_field')"
+        );
+        assert_eq!(
+            resolve_field("note.alias"),
+            "json_extract_string(properties, '$.alias')"
+        );
     }
 
     #[test]
@@ -213,7 +218,7 @@ mod tests {
 
     #[test]
     fn test_compile_function_has() {
-        let ast = super::super::parser::parse("has(note.tags, 'important')");
+        let ast = super::super::parser::parse("has(file.tags, 'important')");
         let sql = compile(&ast);
         assert_eq!(sql, "'important' = ANY(tags)");
     }
@@ -221,7 +226,7 @@ mod tests {
     #[test]
     fn test_compile_complex_query() {
         let ast = super::super::parser::parse(
-            "file.name == 'readme' and file.size > 1000 or has(note.tags, 'todo')",
+            "file.name == 'readme' and file.size > 1000 or has(file.tags, 'todo')",
         );
         let sql = compile(&ast);
         assert_eq!(sql, "name = 'readme' AND size > 1000 OR 'todo' = ANY(tags)");
@@ -267,11 +272,19 @@ mod tests {
     }
 
     #[test]
-    fn test_build_sql_with_note_fields() {
-        let result = build_sql("note.tags == 'test'", "path,note.tags");
+    fn test_build_sql_with_file_fields() {
+        let result = build_sql("file.tags == 'test'", "path,file.tags");
         assert!(result.is_ok());
         let sql = result.unwrap();
         assert!(sql.contains("SELECT path, tags"));
+    }
+
+    #[test]
+    fn test_build_sql_with_note_property() {
+        let result = build_sql("note.category == 'test'", "path,note.category");
+        assert!(result.is_ok());
+        let sql = result.unwrap();
+        assert!(sql.contains("SELECT path, json_extract_string(properties, '$.category')"));
     }
 
     #[test]
@@ -291,15 +304,15 @@ mod tests {
     }
 
     #[test]
-    fn test_has_uses_any_for_note_prefix_array_fields() {
+    fn test_has_uses_any_for_file_prefix_array_fields() {
         let array_fields = vec!["tags", "links", "embeds", "backlinks"];
         for field in array_fields {
-            let query = format!("has(note.{}, 'value')", field);
+            let query = format!("has(file.{}, 'value')", field);
             let ast = super::super::parser::parse(&query);
             let sql = compile(&ast);
             assert!(
                 sql.contains("= ANY("),
-                "has(note.{}) should use = ANY() operator, got: {}",
+                "has(file.{}) should use = ANY() operator, got: {}",
                 field,
                 sql
             );
