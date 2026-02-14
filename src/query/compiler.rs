@@ -23,7 +23,7 @@ pub fn resolve_field(field: &str) -> String {
                 if NOTE_FIELDS.contains(&name) {
                     return name.to_string();
                 }
-                return format!("json_extract(properties, '$.{}')", name);
+                return format!("json_extract_string(properties, '$.{}')", name);
             }
         }
         return field.to_string();
@@ -37,7 +37,7 @@ pub fn resolve_field(field: &str) -> String {
         return field.to_string();
     }
 
-    format!("json_extract(properties, '$.{}')", field)
+    format!("json_extract_string(properties, '$.{}')", field)
 }
 
 pub fn compile(node: &AstNode) -> String {
@@ -134,15 +134,15 @@ mod tests {
     fn test_resolve_shorthand_property() {
         assert_eq!(
             resolve_field("category"),
-            "json_extract(properties, '$.category')"
+            "json_extract_string(properties, '$.category')"
         );
         assert_eq!(
             resolve_field("status"),
-            "json_extract(properties, '$.status')"
+            "json_extract_string(properties, '$.status')"
         );
         assert_eq!(
             resolve_field("priority"),
-            "json_extract(properties, '$.priority')"
+            "json_extract_string(properties, '$.priority')"
         );
     }
 
@@ -150,7 +150,7 @@ mod tests {
     fn test_resolve_note_custom_property() {
         assert_eq!(
             resolve_field("note.custom_field"),
-            "json_extract(properties, '$.custom_field')"
+            "json_extract_string(properties, '$.custom_field')"
         );
     }
 
@@ -231,7 +231,10 @@ mod tests {
     fn test_compile_shorthand_property() {
         let ast = super::super::parser::parse("category == 'project'");
         let sql = compile(&ast);
-        assert_eq!(sql, "json_extract(properties, '$.category') = 'project'");
+        assert_eq!(
+            sql,
+            "json_extract_string(properties, '$.category') = 'project'"
+        );
     }
 
     #[test]
