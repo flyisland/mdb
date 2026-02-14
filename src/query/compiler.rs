@@ -78,7 +78,7 @@ pub fn compile(node: &AstNode) -> String {
                 let field = compile(&args[0]);
                 let value = compile(&args[1]);
                 let clean_value = value.trim_matches('\'');
-                return format!("{} LIKE '%{}%'", field, clean_value);
+                return format!("'{}' = ANY({})", clean_value, field);
             }
             "1=1".to_string()
         }
@@ -215,7 +215,7 @@ mod tests {
     fn test_compile_function_has() {
         let ast = super::super::parser::parse("has(note.tags, 'important')");
         let sql = compile(&ast);
-        assert_eq!(sql, "tags LIKE '%important%'");
+        assert_eq!(sql, "'important' = ANY(tags)");
     }
 
     #[test]
@@ -224,7 +224,7 @@ mod tests {
             "file.name == 'readme' and file.size > 1000 or has(note.tags, 'todo')",
         );
         let sql = compile(&ast);
-        assert_eq!(sql, "name = 'readme' AND size > 1000 OR tags LIKE '%todo%'");
+        assert_eq!(sql, "name = 'readme' AND size > 1000 OR 'todo' = ANY(tags)");
     }
 
     #[test]
