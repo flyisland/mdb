@@ -388,4 +388,128 @@ mod tests {
 
         cleanup_db(&db_path);
     }
+
+    #[test]
+    fn test_query_has_tags_integration() {
+        let temp_dir = std::env::temp_dir();
+        let db_path = temp_dir.join(format!(
+            "test_mdb_{}_{}.duckdb",
+            std::process::id(),
+            get_unique_id()
+        ));
+        let db = Database::new(&db_path).unwrap();
+
+        let mut doc1 = create_test_document("doc1");
+        doc1.tags = vec!["design".to_string(), "technical".to_string()];
+
+        let mut doc2 = create_test_document("doc2");
+        doc2.tags = vec!["todo".to_string()];
+
+        db.upsert_document(&doc1).unwrap();
+        db.upsert_document(&doc2).unwrap();
+
+        let results = db
+            .query(
+                "SELECT * FROM documents WHERE 'design' = ANY(tags)",
+                "*",
+                10,
+            )
+            .unwrap();
+        assert_eq!(results.len(), 1);
+        assert!(results[0][0].contains("doc1"));
+
+        cleanup_db(&db_path);
+    }
+
+    #[test]
+    fn test_query_has_links_integration() {
+        let temp_dir = std::env::temp_dir();
+        let db_path = temp_dir.join(format!(
+            "test_mdb_{}_{}.duckdb",
+            std::process::id(),
+            get_unique_id()
+        ));
+        let db = Database::new(&db_path).unwrap();
+
+        let mut doc1 = create_test_document("doc1");
+        doc1.links = vec!["architecture".to_string(), "readme".to_string()];
+
+        let mut doc2 = create_test_document("doc2");
+        doc2.links = vec!["other".to_string()];
+
+        db.upsert_document(&doc1).unwrap();
+        db.upsert_document(&doc2).unwrap();
+
+        let results = db
+            .query(
+                "SELECT * FROM documents WHERE 'architecture' = ANY(links)",
+                "*",
+                10,
+            )
+            .unwrap();
+        assert_eq!(results.len(), 1);
+        assert!(results[0][0].contains("doc1"));
+
+        cleanup_db(&db_path);
+    }
+
+    #[test]
+    fn test_query_has_embeds_integration() {
+        let temp_dir = std::env::temp_dir();
+        let db_path = temp_dir.join(format!(
+            "test_mdb_{}_{}.duckdb",
+            std::process::id(),
+            get_unique_id()
+        ));
+        let db = Database::new(&db_path).unwrap();
+
+        let mut doc1 = create_test_document("doc1");
+        doc1.embeds = vec!["diagram.png".to_string(), "chart.jpg".to_string()];
+
+        let mut doc2 = create_test_document("doc2");
+        doc2.embeds = vec!["other.png".to_string()];
+
+        db.upsert_document(&doc1).unwrap();
+        db.upsert_document(&doc2).unwrap();
+
+        let results = db
+            .query(
+                "SELECT * FROM documents WHERE 'diagram.png' = ANY(embeds)",
+                "*",
+                10,
+            )
+            .unwrap();
+        assert_eq!(results.len(), 1);
+        assert!(results[0][0].contains("doc1"));
+
+        cleanup_db(&db_path);
+    }
+
+    #[test]
+    fn test_query_has_empty_array() {
+        let temp_dir = std::env::temp_dir();
+        let db_path = temp_dir.join(format!(
+            "test_mdb_{}_{}.duckdb",
+            std::process::id(),
+            get_unique_id()
+        ));
+        let db = Database::new(&db_path).unwrap();
+
+        let mut doc1 = create_test_document("doc1");
+        doc1.tags = vec![];
+
+        let mut doc2 = create_test_document("doc2");
+        doc2.tags = vec!["tag1".to_string()];
+
+        db.upsert_document(&doc1).unwrap();
+        db.upsert_document(&doc2).unwrap();
+
+        let results = db
+            .query("SELECT * FROM documents WHERE 'tag1' = ANY(tags)", "*", 10)
+            .unwrap();
+        assert_eq!(results.len(), 1);
+        assert!(results[0][0].contains("doc2"));
+
+        cleanup_db(&db_path);
+    }
 }

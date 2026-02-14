@@ -270,4 +270,64 @@ mod tests {
         let sql = result.unwrap();
         assert!(sql.contains("SELECT path, tags"));
     }
+
+    #[test]
+    fn test_has_uses_any_for_array_fields() {
+        let array_fields = vec!["tags", "links", "embeds", "backlinks"];
+        for field in array_fields {
+            let query = format!("has({}, 'value')", field);
+            let ast = super::super::parser::parse(&query);
+            let sql = compile(&ast);
+            assert!(
+                sql.contains("= ANY("),
+                "has({}) should use = ANY() operator, got: {}",
+                field,
+                sql
+            );
+        }
+    }
+
+    #[test]
+    fn test_has_uses_any_for_note_prefix_array_fields() {
+        let array_fields = vec!["tags", "links", "embeds", "backlinks"];
+        for field in array_fields {
+            let query = format!("has(note.{}, 'value')", field);
+            let ast = super::super::parser::parse(&query);
+            let sql = compile(&ast);
+            assert!(
+                sql.contains("= ANY("),
+                "has(note.{}) should use = ANY() operator, got: {}",
+                field,
+                sql
+            );
+        }
+    }
+
+    #[test]
+    fn test_has_does_not_use_like_for_array_fields() {
+        let array_fields = vec!["tags", "links", "embeds", "backlinks"];
+        for field in array_fields {
+            let query = format!("has({}, 'value')", field);
+            let ast = super::super::parser::parse(&query);
+            let sql = compile(&ast);
+            assert!(
+                !sql.contains("LIKE"),
+                "has({}) should NOT use LIKE operator, got: {}",
+                field,
+                sql
+            );
+        }
+    }
+
+    #[test]
+    fn test_like_operator_for_non_array_fields() {
+        let query = "file.name =~ '%test%'";
+        let ast = super::super::parser::parse(query);
+        let sql = compile(&ast);
+        assert!(
+            sql.contains("LIKE"),
+            "=~ should use LIKE operator, got: {}",
+            sql
+        );
+    }
 }

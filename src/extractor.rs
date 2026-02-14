@@ -276,4 +276,60 @@ Content"#;
             true
         );
     }
+
+    #[test]
+    fn test_extract_frontmatter_with_dates() {
+        let content = r#"---
+created: 2024-01-15
+modified: 2024-06-20T10:30:00Z
+---
+
+Content"#;
+        let extracted = Extractor::extract(content);
+        assert!(extracted.frontmatter.get("created").is_some());
+        assert!(extracted.frontmatter.get("modified").is_some());
+    }
+
+    #[test]
+    fn test_extract_frontmatter_with_array() {
+        let content = r#"---
+tags: [todo, in-progress, done]
+categories:
+  - tech
+  - personal
+---
+
+Content"#;
+        let extracted = Extractor::extract(content);
+        let tags = extracted.frontmatter.get("tags").unwrap();
+        assert!(tags.is_array());
+        assert_eq!(tags.as_array().unwrap().len(), 3);
+    }
+
+    #[test]
+    fn test_extract_frontmatter_with_null() {
+        let content = r#"---
+title: Test
+description: null
+---
+
+Content"#;
+        let extracted = Extractor::extract(content);
+        assert!(extracted.frontmatter.get("description").unwrap().is_null());
+    }
+
+    #[test]
+    fn test_extract_frontmatter_with_special_chars() {
+        let content = r#"---
+title: "Test: with colon, and 'quotes'"
+url: https://example.com/path?a=1&b=2
+regex: ^\d{3}-\d{4}$
+---
+
+Content"#;
+        let extracted = Extractor::extract(content);
+        assert!(extracted.frontmatter.get("title").is_some());
+        assert!(extracted.frontmatter.get("url").is_some());
+        assert!(extracted.frontmatter.get("regex").is_some());
+    }
 }
