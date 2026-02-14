@@ -37,14 +37,18 @@ enum Commands {
         #[arg(short, long)]
         query: String,
 
-        #[arg(short, long, default_value = "table")]
+        #[arg(short = 'o', long = "output-format", default_value = "table")]
         format: String,
+
+        #[arg(
+            short = 'f',
+            long = "output-fields",
+            default_value = "file.path, file.mtime"
+        )]
+        fields: String,
 
         #[arg(short, long, default_value_t = 1000)]
         limit: usize,
-
-        #[arg(short = 'F', long, default_value = "*")]
-        fields: String,
     },
 }
 
@@ -76,4 +80,56 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_default_fields_value() {
+        let cli = Cli::parse_from(["mdb", "query", "-q", "file.name == 'test'"]);
+        if let Commands::Query { fields, .. } = cli.command {
+            assert_eq!(fields, "file.path, file.mtime");
+        } else {
+            panic!("Expected Query command");
+        }
+    }
+
+    #[test]
+    fn test_all_fields_option() {
+        let cli = Cli::parse_from(["mdb", "query", "-q", "file.name == 'test'", "-f", "*"]);
+        if let Commands::Query { fields, .. } = cli.command {
+            assert_eq!(fields, "*");
+        } else {
+            panic!("Expected Query command");
+        }
+    }
+
+    #[test]
+    fn test_specific_field_option() {
+        let cli = Cli::parse_from([
+            "mdb",
+            "query",
+            "-q",
+            "file.name == 'test'",
+            "--output-fields",
+            "file.name",
+        ]);
+        if let Commands::Query { fields, .. } = cli.command {
+            assert_eq!(fields, "file.name");
+        } else {
+            panic!("Expected Query command");
+        }
+    }
+
+    #[test]
+    fn test_output_format_option() {
+        let cli = Cli::parse_from(["mdb", "query", "-q", "file.name == 'test'", "-o", "json"]);
+        if let Commands::Query { format, .. } = cli.command {
+            assert_eq!(format, "json");
+        } else {
+            panic!("Expected Query command");
+        }
+    }
 }

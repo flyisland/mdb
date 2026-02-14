@@ -144,20 +144,33 @@ impl Database {
             .map_err(|e| format!("Clone error: {}", e))?;
 
         let mut stmt = con.prepare(&sql)?;
+        stmt.execute([])?;
+        let column_count = stmt.column_count();
+        let column_names: Vec<String> = (0..column_count)
+            .map(|i| stmt.column_name(i).map_or("", |v| v).to_string())
+            .collect();
         let mut rows = stmt.query([])?;
 
         while let Some(row) = rows.next()? {
             let mut result_row = Vec::new();
-            for i in 0..13 {
+            for i in 0..column_count {
+                let _col_name = column_names.get(i).map_or("", |s| s.as_str());
                 let val: duckdb::types::Value = row.get(i)?;
                 let s = match val {
                     duckdb::types::Value::Text(t) => t,
                     duckdb::types::Value::Int(i) => i.to_string(),
-                    duckdb::types::Value::BigInt(i) => i.to_string(),
+                    duckdb::types::Value::BigInt(n) => n.to_string(),
                     duckdb::types::Value::Double(d) => d.to_string(),
                     duckdb::types::Value::Float(f) => f.to_string(),
                     duckdb::types::Value::Boolean(b) => b.to_string(),
-                    duckdb::types::Value::Timestamp(_, ts) => ts.to_string(),
+                    duckdb::types::Value::Timestamp(_, ts) => {
+                        let dt = chrono::DateTime::from_timestamp_micros(ts);
+                        if let Some(dt) = dt {
+                            dt.format("%Y-%m-%d %H:%M:%S").to_string()
+                        } else {
+                            ts.to_string()
+                        }
+                    }
                     duckdb::types::Value::List(list) => {
                         let items: Vec<String> = list
                             .iter()
