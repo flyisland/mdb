@@ -42,14 +42,14 @@ impl Database {
                 name TEXT NOT NULL,
                 ext TEXT NOT NULL,
                 size INTEGER NOT NULL,
-                ctime BIGINT NOT NULL,
-                mtime BIGINT NOT NULL,
+                ctime TIMESTAMPTZ NOT NULL,
+                mtime TIMESTAMPTZ NOT NULL,
                 content TEXT,
-                tags TEXT,
-                links TEXT,
-                backlinks TEXT,
-                embeds TEXT,
-                properties TEXT
+                tags VARCHAR[],
+                links VARCHAR[],
+                backlinks VARCHAR[],
+                embeds VARCHAR[],
+                properties JSON
             )",
             [],
         )?;
@@ -69,6 +69,9 @@ impl Database {
     }
 
     pub fn upsert_document(&self, doc: &Document) -> Result<(), Box<dyn std::error::Error>> {
+        let ctime_dt = chrono::DateTime::from_timestamp(doc.ctime, 0).unwrap();
+        let mtime_dt = chrono::DateTime::from_timestamp(doc.mtime, 0).unwrap();
+
         self.conn.execute(
             "INSERT OR REPLACE INTO documents 
              (path, folder, name, ext, size, ctime, mtime, content, tags, links, backlinks, embeds, properties)
@@ -79,8 +82,8 @@ impl Database {
                 &doc.name,
                 &doc.ext,
                 doc.size as i64,
-                doc.ctime,
-                doc.mtime,
+                ctime_dt,
+                mtime_dt,
                 &doc.content,
                 serde_json::to_string(&doc.tags)?,
                 serde_json::to_string(&doc.links)?,
@@ -99,8 +102,8 @@ impl Database {
         let mut rows = stmt.query(params![path])?;
 
         if let Some(row) = rows.next()? {
-            let mtime: i64 = row.get(0)?;
-            Ok(Some(mtime))
+            let mtime: chrono::DateTime<chrono::Utc> = row.get(0)?;
+            Ok(Some(mtime.timestamp()))
         } else {
             Ok(None)
         }
@@ -109,7 +112,9 @@ impl Database {
     pub fn get_all_links(
         &self,
     ) -> Result<std::collections::HashMap<String, Vec<String>>, Box<dyn std::error::Error>> {
-        let mut stmt = self.conn.prepare("SELECT path, links FROM documents")?;
+        let mut stmt = self
+            .conn
+            .prepare("SELECT path, to_json(links) FROM documents")?;
         let mut rows = stmt.query([])?;
 
         let mut link_map = std::collections::HashMap::new();
@@ -152,6 +157,17 @@ impl Database {
                     duckdb::types::Value::Double(d) => d.to_string(),
                     duckdb::types::Value::Float(f) => f.to_string(),
                     duckdb::types::Value::Boolean(b) => b.to_string(),
+                    duckdb::types::Value::Timestamp(_, ts) => ts.to_string(),
+                    duckdb::types::Value::List(list) => {
+                        let items: Vec<String> = list
+                            .iter()
+                            .map(|v| match v {
+                                duckdb::types::Value::Text(t) => t.clone(),
+                                _ => format!("{:?}", v),
+                            })
+                            .collect();
+                        serde_json::to_string(&items).unwrap_or_default()
+                    }
                     _ => String::new(),
                 };
                 result_row.push(s);
@@ -181,7 +197,7 @@ mod tests {
             name: name.to_string(),
             ext: "md".to_string(),
             size: 1000,
-            ctime: 1704067200, // 2024-01-01
+            ctime: 1704067200,
             mtime: 1704067200,
             content: format!("Content of {}", name),
             tags: vec!["test".to_string(), "example".to_string()],
