@@ -3,11 +3,18 @@ mod extractor;
 mod query;
 mod scanner;
 
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
 use std::path::PathBuf;
 use std::sync::Mutex;
 
 use crate::db::Database;
+
+#[derive(Clone, ValueEnum, Debug, PartialEq)]
+enum OutputFormat {
+    Table,
+    Json,
+    List,
+}
 
 #[derive(Parser)]
 #[command(name = "mdb")]
@@ -38,7 +45,7 @@ enum Commands {
         query: String,
 
         #[arg(short = 'o', long = "output-format", default_value = "table")]
-        format: String,
+        format: OutputFormat,
 
         #[arg(
             short = 'f',
@@ -72,10 +79,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             limit,
             fields,
         } => {
+            let field_names: Vec<String> =
+                fields.split(',').map(|s| s.trim().to_string()).collect();
+            let format_str = match format {
+                OutputFormat::Table => "table",
+                OutputFormat::Json => "json",
+                OutputFormat::List => "list",
+            };
             let compiled = query::build_sql(&query, &fields).map_err(|e| e.to_string())?;
             let db = db.lock().unwrap();
             let results = db.query(&compiled, &fields, limit)?;
-            query::output_results(&results, &format)?;
+            query::output_results(&results, format_str, &field_names)?;
         }
     }
 
@@ -127,7 +141,7 @@ mod tests {
     fn test_output_format_option() {
         let cli = Cli::parse_from(["mdb", "query", "-q", "file.name == 'test'", "-o", "json"]);
         if let Commands::Query { format, .. } = cli.command {
-            assert_eq!(format, "json");
+            assert_eq!(format, OutputFormat::Json);
         } else {
             panic!("Expected Query command");
         }
