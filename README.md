@@ -12,7 +12,7 @@ A high-performance CLI tool for indexing and querying Markdown files with DuckDB
 ```bash
 # Clone the repository
 git clone <repository-url>
-cd mdb-rs
+cd mdb
 
 # Build release binary
 cargo build --release
@@ -43,7 +43,7 @@ Scans Markdown files and indexes to DuckDB.
 
 ```bash
 mdb index --base-dir ./notes        # Index base directory
-mdb index --base-dir ./notes -f     # Force re-index
+mdb index --base-dir ./notes --force     # Force re-index
 mdb index --base-dir ./notes -v     # Verbose
 ```
 
@@ -57,11 +57,11 @@ mdb query -q "file.folder =~ '%projects%'"
 mdb query -q "file.mtime > '2024-01-01'"
 
 # Output formats
-mdb query -q "has(note.tags, 'todo')" --format json
-mdb query -q "has(note.tags, 'todo')" --format list
+mdb query -q "has(note.tags, 'todo')" -o json
+mdb query -q "has(note.tags, 'todo')" -o list
 
-# Select fields
-mdb query -q "file.name == 'readme'" -F "path,name,size"
+# Select fields (default: file.path, file.mtime)
+mdb query -q "file.name == 'readme'" -f "path,name,size"
 ```
 
 **Fields:** `file.path`, `file.folder`, `file.name`, `file.ext`, `file.size`, `file.ctime`, `file.mtime`, `note.content`, `note.tags`, `note.links`, `note.backlinks`, `note.embeds`, `note.properties`
@@ -70,6 +70,8 @@ mdb query -q "file.name == 'readme'" -F "path,name,size"
 
 **Functions:** `has(field, value)` - array containment
 
+**Note:** Timestamps are displayed in human-readable format (YYYY-MM-DD HH:MM:SS)
+
 ## Features
 
 - Fast indexing with DuckDB
@@ -77,6 +79,7 @@ mdb query -q "file.name == 'readme'" -F "path,name,size"
 - Obsidian support (wiki-links, embeds, frontmatter, tags)
 - Incremental updates
 - Multiple output formats (table, json, list)
+- Human-readable timestamps
 
 ## Development
 
@@ -105,7 +108,7 @@ cargo run -- index --base-dir ./notes -v
 
 The project includes comprehensive unit tests covering all major components:
 
-- **90 total tests** across all modules
+- **100 total tests** across all modules
 - **Query System**: Tokenizer, parser, compiler, and SQL generation
 - **Content Extraction**: Frontmatter, tags, wiki-links, embeds
 - **Database**: CRUD operations, queries, and filtering
@@ -126,17 +129,23 @@ Run tests with: `cargo test`
 ## Project Structure
 
 ```
-src/
-├── main.rs        # CLI entry point with clap
-├── db.rs          # DuckDB database operations
-├── scanner.rs     # File discovery and indexing
-├── extractor.rs   # Markdown content extraction
-├── lib.rs         # Library exports
-└── query/         # Query system
-    ├── mod.rs     # Output formatting (table/json/list)
-    ├── tokenizer.rs  # Query tokenization
-    ├── parser.rs     # AST parsing
-    └── compiler.rs   # SQL compilation
+mdb/
+├── Cargo.toml           # Rust dependencies and metadata
+├── Cargo.lock           # Dependency lock file
+├── README.md            # User documentation
+├── AGENTS.md            # This file - agent specification
+├── src/
+│   ├── main.rs          # CLI entry point with clap
+│   ├── db.rs            # DuckDB database operations
+│   ├── scanner.rs       # File discovery and indexing
+│   ├── extractor.rs     # Markdown content extraction
+│   ├── lib.rs           # Library exports
+│   └── query/           # Query system
+│       ├── mod.rs       # Output formatting (table/json/list)
+│       ├── tokenizer.rs # Query tokenization
+│       ├── parser.rs    # AST parsing
+│       └── compiler.rs  # SQL compilation
+└── target/              # Build output
 ```
 
 ## License

@@ -78,11 +78,12 @@ CREATE INDEX IF NOT EXISTS idx_name ON documents(name);
     - Support logical operators: `and`, `or` with proper precedence
     - Support `has()` function for array containment checks
     - Compile queries to DuckDB SQL for execution
+    - Timestamps displayed in human-readable format (YYYY-MM-DD HH:MM:SS)
 - **Options**:
     - `-q, --query <expression>` - Query expression (required)
-    - `-o, --format <type>` - Output: table, json, list (default: table)
+    - `-o, --output-format <type>` - Output: table, json, list (default: table)
     - `-l, --limit <n>` - Max results (default: 1000)
-    - `-F, --fields <fields>` - Fields to select (comma-separated, use * for all)
+    - `-f, --output-fields <fields>` - Fields to select (default: file.path, file.mtime)
 
 ## 5. Implementation Details
 
@@ -244,8 +245,8 @@ mdb query -q "has(note.tags, 'important')"
 # Shorthand properties (frontmatter)
 mdb query -q "category == 'project'"
 
-# Field selection
-mdb query -q "file.name == 'readme'" -F "path,name,size"
+# Field selection (default: file.path, file.mtime)
+mdb query -q "file.name == 'readme'" -f "path,name,size"
 
 # Output formats
 mdb query -q "file.name == 'readme'" -o json
@@ -295,7 +296,7 @@ cargo clippy
 ## 9. Project Structure
 
 ```
-mdb-rs/
+mdb/
 ├── Cargo.toml           # Rust dependencies and metadata
 ├── Cargo.lock           # Dependency lock file
 ├── README.md            # User documentation
@@ -339,7 +340,7 @@ mdb-rs/
 
 ### Test Coverage Summary
 
-**Unit Tests Implemented (90 tests total):**
+**Unit Tests Implemented (100 tests total):**
 
 | Module | Tests | Coverage |
 |--------|-------|----------|
@@ -350,6 +351,7 @@ mdb-rs/
 | `db.rs` | 8 | Database operations, queries, CRUD |
 | `scanner.rs` | 13 | File scanning, indexing, backlinks, subdirectories |
 | `query/mod.rs` | 9 | Output formatting (table, JSON, list) |
+| `main.rs` | 10 | CLI options, default values, parsing |
 
 **Test Execution:**
 ```bash
