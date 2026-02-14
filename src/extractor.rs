@@ -11,13 +11,13 @@ pub struct Extractor;
 
 impl Extractor {
     pub fn extract(content: &str) -> ExtractedContent {
-        let (frontmatter, content) = Self::parse_frontmatter(content);
-        let tags = Self::extract_tags(&content);
-        let links = Self::extract_wikilinks(&content);
-        let embeds = Self::extract_embeds(&content);
+        let (frontmatter, content_without_fm) = Self::parse_frontmatter(content);
+        let tags = Self::extract_tags(&content_without_fm);
+        let links = Self::extract_wikilinks(&content_without_fm);
+        let embeds = Self::extract_embeds(&content_without_fm);
 
         ExtractedContent {
-            content,
+            full_content: content.to_string(),
             frontmatter,
             tags,
             links,
@@ -62,7 +62,7 @@ impl Extractor {
 }
 
 pub struct ExtractedContent {
-    pub content: String,
+    pub full_content: String,
     pub frontmatter: Value,
     pub tags: Vec<String>,
     pub links: Vec<String>,
@@ -77,7 +77,7 @@ mod tests {
     fn test_extract_simple_content() {
         let content = "# Hello World\n\nThis is a test.";
         let extracted = Extractor::extract(content);
-        assert_eq!(extracted.content, content);
+        assert_eq!(extracted.full_content, content);
         assert!(extracted.frontmatter.is_null());
         assert!(extracted.tags.is_empty());
         assert!(extracted.links.is_empty());
@@ -105,7 +105,7 @@ This is the body."#;
                 .unwrap(),
             "Test Document"
         );
-        assert_eq!(extracted.content, "# Content\n\nThis is the body.");
+        assert_eq!(extracted.full_content, content);
     }
 
     #[test]
@@ -194,9 +194,8 @@ Check [[architecture]] and [[api-design]].
 
 Content here."#;
         let extracted = Extractor::extract(content);
-        // Empty frontmatter parses as null
         assert!(extracted.frontmatter.is_null());
-        assert_eq!(extracted.content, "Content here.");
+        assert_eq!(extracted.full_content, content);
     }
 
     #[test]

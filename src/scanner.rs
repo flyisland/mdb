@@ -54,7 +54,7 @@ pub fn index_directory(
                 size,
                 ctime,
                 mtime,
-                content: extracted.content,
+                content: extracted.full_content,
                 tags: extracted.tags,
                 links: extracted.links,
                 backlinks: vec![],

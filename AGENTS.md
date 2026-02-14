@@ -36,7 +36,7 @@ The DuckDB local file (`.mdb/mdb.duckdb`) utilizes the following schema to suppo
 | size       | INTEGER    | File size in bytes                                            |
 | ctime      | TIMESTAMPTZ| Created time                                                   |
 | mtime      | TIMESTAMPTZ| Modified time                                                 |
-| content    | TEXT       | File content (without frontmatter)                            |
+| content    | TEXT       | Full file content (including frontmatter)                    |
 | tags       | VARCHAR[]  | Array of tags                                                 |
 | links      | VARCHAR[]  | Array of wiki-links                                           |
 | backlinks  | VARCHAR[]  | Array of backlink files                                        |
@@ -111,19 +111,17 @@ static EMBED_REGEX: &str = r"!\[\[([^\]]+)\]\]";
 static TAG_REGEX: &str = r"#[\w\-/]+";
 ```
 
-Frontmatter parsing with serde_yaml:
+Frontmatter parsing with gray_matter:
 ```rust
 fn parse_frontmatter(content: &str) -> (Value, String) {
-    if content.starts_with("---") {
-        if let Some(end_idx) = content[3..].find("---") {
-            let yaml_content = &content[3..end_idx + 3];
-            let remaining = &content[end_idx + 6..];
-            if let Ok(props) = serde_yaml::from_str::<Value>(yaml_content) {
-                return (props, remaining.trim().to_string());
-            }
+    let matter = Matter::<YAML>::new();
+    match matter.parse::<Value>(content) {
+        Ok(result) => {
+            let frontmatter = result.data.map(|v| serde_json::to_value(v).unwrap_or(Value::Null)).unwrap_or(Value::Null);
+            (frontmatter, result.content)
         }
+        Err(_) => (Value::Null, content.to_string()),
     }
-    (Value::Null, content.to_string())
 }
 ```
 
