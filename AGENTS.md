@@ -6,22 +6,7 @@ The goal is to build a high-performance Command Line Interface (CLI) tool design
 
 ## 2. Technical Stack
 
-- **Language**: [Rust](https://rust-lang.org) 2024 edition
-- **Database**: [DuckDB](https://duckdb.org) via [`duckdb`](https://docs.rs/duckdb) crate with `bundled` and `chrono` features
-- **CLI Framework**: [`clap`](https://docs.rs/clap) v4.5 with derive features
-- **File Discovery**: [`walkdir`](https://docs.rs/walkdir) v2.5
-- **Frontmatter Parser**: [`gray_matter`](https://docs.rs/gray_matter) v0.3
-- **Pattern Matching**: [`regex`](https://docs.rs/regex) v1.10
-- **Serialization**: [`serde`](https://docs.rs/serde) v1.0 with derive features
-- **Date/Time**: [`chrono`](https://docs.rs/chrono) v0.4
-
-### 2.1 Why Rust?
-
-The project was migrated from Bun/TypeScript to Rust for:
-- **Performance**: Native compilation with zero-cost abstractions
-- **Type Safety**: Compile-time guarantees with expressive type system
-- **Ecosystem**: Mature crates for DuckDB, CLI parsing, and file operations
-- **Distribution**: Single static binary with `cargo build --release`
+See [README.md](./README.md#tech-stack) for the complete tech stack details.
 
 ## 3. Data Schema
 
@@ -59,7 +44,7 @@ CREATE INDEX IF NOT EXISTS idx_name ON documents(name);
 - **Concurrency**: Sequential processing with WalkDir iterator.
 - **Logic**: 
     - Perform incremental updates by comparing `mtime`.
-    - Extract YAML Frontmatter using `serde_yaml`.
+    - Extract YAML Frontmatter using `gray_matter`.
     - Parse wiki-links `[[link]]`, embeds `![[embed]]`, and tags `#tag` using regex.
     - Calculate backlinks (reverse link lookup) post-indexing.
     - Insert documents using parameterized queries with `duckdb::params!`.
@@ -241,29 +226,11 @@ enum Commands {
 
 ## 8. Development Commands
 
-See [README.md](./README.md#development) for usage examples.
+See [README.md](./README.md#development) for usage examples and [README.md#testing] for test execution.
 
 ## 9. Project Structure
 
-```
-mdb/
-├── Cargo.toml           # Rust dependencies and metadata
-├── Cargo.lock           # Dependency lock file
-├── README.md            # User documentation
-├── AGENTS.md            # This file - agent specification
-├── src/
-│   ├── main.rs          # CLI entry point
-│   ├── lib.rs           # Library exports
-│   ├── db.rs            # Database operations
-│   ├── scanner.rs       # File discovery
-│   ├── extractor.rs     # Content extraction
-│   └── query/
-│       ├── mod.rs       # Output formatting
-│       ├── tokenizer.rs # Lexical analysis
-│       ├── parser.rs    # AST generation
-│       └── compiler.rs  # SQL compilation
-└── target/              # Build output
-```
+See [README.md](./README.md#project-structure) for the complete project structure.
 
 ## 10. Development Status
 
