@@ -1,0 +1,44 @@
+src/attachment.rs
+  s_04afd7d50cf4a8::t_d7228c636dfddb 43-47,152-176,482-525,530,533,542-568
+  s_04afd7d50cf4a8::t_42dac82d6f4d69 42
+README.md
+  s_04afd7d50cf4a8::t_d7228c636dfddb 167,181-186,220
+  s_04afd7d50cf4a8::t_3d238cc355898b 187
+src/main.rs
+  s_04afd7d50cf4a8::t_d7228c636dfddb 222-226,594-597
+  s_04afd7d50cf4a8::t_d555e9f9221ace 598
+docs/design-docs/draft/design-015-source-attachments.md
+  s_04afd7d50cf4a8::t_4a16e8d79a209d 51-56
+tests/cli_attachment.rs
+  s_04afd7d50cf4a8::t_21fd353b3a614d 83-88
+  s_04afd7d50cf4a8::t_b9d671bdf085b8 99-103
+  s_04afd7d50cf4a8::t_4a16e8d79a209d 59-82,89-94,96-98,104-137
+  s_04afd7d50cf4a8::t_eaebce1dae37b0 95
+CHANGELOG.md
+  s_04afd7d50cf4a8::t_807f2f13e19654 8-21
+Cargo.toml
+  s_04afd7d50cf4a8::t_807f2f13e19654 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "tlab_version": "0.7.0",
+  "base_commit_sha": "b3437a0eb2725ffd20f2f45963d08c5ffa403099",
+  "prompts": {},
+  "sessions": {
+    "s_04afd7d50cf4a8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fa316-989d-7070-9382-ac3ba1b28e6c",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "flyisland <island.chen@outlook.com>",
+      "custom_attributes": {
+        "tlab.token_usage.cache_read_tokens": "1012480",
+        "tlab.token_usage.output_tokens": "7994",
+        "tlab.session_started_at": "2026-07-27T10:23:26Z",
+        "tlab.token_usage.input_tokens": "81030",
+        "tlab.token_usage.cache_creation_tokens": "0"
+      }
+    }
+  }
+}
