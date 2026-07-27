@@ -219,6 +219,11 @@ enum SourceCommands {
         #[arg(help = "Source note name only (no directories or .md extension)")]
         source_note: String,
     },
+    #[command(about = "Rebuild managed attachment display rows from their JSON metadata")]
+    RerenderAttachments {
+        #[arg(help = "Source note name only (no directories or .md extension)")]
+        source_note: String,
+    },
 }
 
 #[derive(Subcommand)]
@@ -585,6 +590,11 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
                 if !result.ok {
                     return Err("source attachment verification failed".into());
                 }
+            }
+            SourceCommands::RerenderAttachments { source_note } => {
+                validate_note_name(&source_note)?;
+                let result = attachment::rerender(&base_dir, &source_note)?;
+                println!("{}", serde_json::to_string(&result)?);
             }
         },
     }

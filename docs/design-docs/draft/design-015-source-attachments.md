@@ -48,6 +48,12 @@ machine contract. `source attachments` reads it in document order, and
 `source verify-attachments` rehashes files and reports structured issues
 without repairing anything.
 
+Markdown link destinations are percent-encoded as relative URLs; the JSON
+`path` and `original_path` remain literal filesystem strings. For notes written
+by versions that emitted unescaped destinations, `source rerender-attachments`
+rebuilds only the managed display rows from the JSON records. It neither edits
+the JSON metadata nor changes attachment files.
+
 ## Failure boundary
 
 The source note and input are completely validated before a destination

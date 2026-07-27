@@ -57,6 +57,85 @@ fn test_source_attach_copies_file_writes_evidence_and_returns_json() {
 }
 
 #[test]
+fn test_source_attachment_links_percent_encode_paths_and_rerender_safely() {
+    let vault = TestVault::new();
+    vault.create_note_in_subdir("来源 文件夹", "source note", &source_note());
+    let input = vault.create_file("输入 文件/2026-06 中文 #?.png", "image bytes");
+
+    let attached = vault.run_cli(&[
+        "source",
+        "attach",
+        "source note",
+        &input.to_string_lossy(),
+        "--description",
+        "Unicode evidence",
+    ]);
+    assert!(
+        attached.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&attached.stderr)
+    );
+    let attachment = json(&attached)["attachment"].clone();
+    assert_eq!(
+        attachment["path"],
+        "来源 文件夹/attachments/source note/2026-06 中文 #?.png"
+    );
+    assert!(
+        attachment["original_path"]
+            .as_str()
+            .unwrap()
+            .ends_with("输入 文件/2026-06 中文 #?.png")
+    );
+
+    let source_path = vault.path.join("来源 文件夹/source note.md");
+    let encoded_target = "attachments/source%20note/2026-06%20%E4%B8%AD%E6%96%87%20%23%3F.png";
+    let unescaped_target = "attachments/source note/2026-06 中文 #?.png";
+    let source = std::fs::read_to_string(&source_path).unwrap();
+    assert!(source.contains(encoded_target));
+    assert!(!source.contains(&format!("]({})", unescaped_target)));
+
+    // Simulate the rows emitted by an older Markbase version while retaining
+    // the authoritative JSON metadata, then migrate them through the CLI.
+    std::fs::write(
+        &source_path,
+        source.replacen(encoded_target, unescaped_target, 1),
+    )
+    .unwrap();
+    let rerendered = vault.run_cli(&["source", "rerender-attachments", "source note"]);
+    assert!(
+        rerendered.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&rerendered.stderr)
+    );
+    assert_eq!(json(&rerendered)["attachments"][0], attachment);
+    let migrated = std::fs::read_to_string(&source_path).unwrap();
+    assert!(migrated.contains(encoded_target));
+    assert_eq!(
+        json(&vault.run_cli(&["source", "verify-attachments", "source note"]))["ok"],
+        true
+    );
+}
+
+#[test]
+fn test_source_attachment_links_keep_unreserved_paths_usable() {
+    let vault = TestVault::new();
+    vault.create_note_in_subdir("sources", "evidence", &source_note());
+    let input = vault.create_file("outside/report.txt", "proof");
+
+    let output = vault.run_cli(&[
+        "source",
+        "attach",
+        "evidence",
+        &input.to_string_lossy(),
+        "--description",
+        "Test proof",
+    ]);
+    assert!(output.status.success());
+    let source = std::fs::read_to_string(vault.path.join("sources/evidence.md")).unwrap();
+    assert!(source.contains("[report.txt](attachments/evidence/report.txt)"));
+}
+
+#[test]
 fn test_source_attach_is_idempotent_for_same_content() {
     let vault = TestVault::new();
     vault.create_note_in_subdir("sources", "evidence", &source_note());

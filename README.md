@@ -164,6 +164,7 @@ Archive a local evidence file for a `type: source` note:
 markbase source attach customer-call ~/Downloads/notes.txt --description "Meeting notes exported by the customer"
 markbase source attachments customer-call
 markbase source verify-attachments customer-call
+markbase source rerender-attachments customer-call
 ```
 
 `source attach` copies (never moves) a readable regular file to the source
@@ -177,7 +178,13 @@ from headings or callouts:
 <!-- markbase:source-attachments:end -->
 ```
 
-The three source commands emit JSON to stdout. They do not index the vault;
+Generated Markdown link targets are URL percent-encoded, while the managed JSON
+keeps the real vault-relative path and original input path unchanged. To migrate
+notes created by older versions, run `source rerender-attachments <source-note>`;
+it rebuilds only the managed display rows from their JSON records and leaves
+attachment files and metadata untouched.
+
+The four source commands emit JSON to stdout. They do not index the vault;
 attachment metadata is kept in Markdown and can be verified against the copied
 files at any time.
 
@@ -210,6 +217,7 @@ markbase web get /entities/person/alice.md?fields=properties,links
 | `source attach` | Archive a local evidence file for a source note |
 | `source attachments` | List managed source evidence records |
 | `source verify-attachments` | Validate source evidence files and metadata |
+| `source rerender-attachments` | Rebuild managed attachment links from metadata |
 | `web serve` | Serve the vault in the browser |
 | `web get` | Print the final web Markdown for one canonical route |
 

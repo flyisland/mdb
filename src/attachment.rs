@@ -40,6 +40,12 @@ pub struct VerifyResult {
 }
 
 #[derive(Serialize)]
+pub struct RerenderResult {
+    pub source: String,
+    pub attachments: Vec<AttachmentRecord>,
+}
+
+#[derive(Serialize)]
 pub struct AttachmentIssue {
     pub path: String,
     pub code: String,
@@ -141,6 +147,31 @@ pub fn list(
 ) -> Result<Vec<AttachmentRecord>, Box<dyn std::error::Error>> {
     let source = load_source(base_dir, source_name)?;
     records_in_section(&source.content, &source.section)
+}
+
+/// Rebuild the machine-managed display rows from their JSON metadata.
+///
+/// This deliberately leaves attachment files and metadata untouched, so it can
+/// safely migrate notes created before Markdown link targets were encoded.
+pub fn rerender(
+    base_dir: &Path,
+    source_name: &str,
+) -> Result<RerenderResult, Box<dyn std::error::Error>> {
+    let source = load_source(base_dir, source_name)?;
+    let records = records_in_section(&source.content, &source.section)?;
+    let source_parent = source
+        .path
+        .parent()
+        .ok_or("Source note has no parent directory")?;
+    let rendered = render_records(base_dir, source_parent, &records)?;
+    let updated = replace_section(&source.content, &source.section, &rendered);
+    if updated != source.content {
+        write_atomic(&source.path, updated.as_bytes())?;
+    }
+    Ok(RerenderResult {
+        source: source.relative_path,
+        attachments: records,
+    })
 }
 
 pub fn verify(base_dir: &Path, source_name: &str) -> VerifyResult {
@@ -448,23 +479,7 @@ fn append_record(
         .strip_prefix(source_parent)?
         .to_string_lossy()
         .replace('\\', "/");
-    let label = target
-        .file_name()
-        .and_then(|v| v.to_str())
-        .ok_or("Attachment filename is not UTF-8")?;
-    let display = format!(
-        "- [{}]({}) — description: {}; original path: {}; SHA-256: {}; bytes: {}; MIME type: {}\n  {}{}{}\n",
-        label.replace(']', "\\]"),
-        relative_link.replace(')', "\\)"),
-        record.description.replace('\n', " "),
-        record.original_path,
-        record.sha256,
-        record.bytes,
-        record.mime_type,
-        RECORD_PREFIX,
-        serde_json::to_string(record)?,
-        RECORD_SUFFIX
-    );
+    let display = render_record(&relative_link, target, record)?;
     let mut result = String::with_capacity(content.len() + display.len() + 1);
     result.push_str(&content[..section.end]);
     if !content[..section.end].ends_with('\n') {
@@ -473,6 +488,85 @@ fn append_record(
     result.push_str(&display);
     result.push_str(&content[section.end..]);
     Ok(result)
+}
+
+fn render_records(
+    base_dir: &Path,
+    source_parent: &Path,
+    records: &[AttachmentRecord],
+) -> Result<String, Box<dyn std::error::Error>> {
+    let mut rendered = String::new();
+    for record in records {
+        let target = archived_record_file(base_dir, record)?;
+        let relative_link = target
+            .strip_prefix(source_parent)?
+            .to_string_lossy()
+            .replace('\\', "/");
+        rendered.push_str(&render_record(&relative_link, &target, record)?);
+    }
+    Ok(rendered)
+}
+
+fn replace_section(content: &str, section: &Section, rendered: &str) -> String {
+    let mut result = String::with_capacity(content.len() + rendered.len());
+    result.push_str(&content[..section.start]);
+    if !content[..section.start].ends_with('\n') {
+        result.push('\n');
+    }
+    result.push_str(rendered);
+    result.push_str(&content[section.end..]);
+    result
+}
+
+fn render_record(
+    relative_link: &str,
+    target: &Path,
+    record: &AttachmentRecord,
+) -> Result<String, Box<dyn std::error::Error>> {
+    let label = target
+        .file_name()
+        .and_then(|v| v.to_str())
+        .ok_or("Attachment filename is not UTF-8")?;
+    Ok(format!(
+        "- [{}]({}) — description: {}; original path: {}; SHA-256: {}; bytes: {}; MIME type: {}\n  {}{}{}\n",
+        label.replace(']', "\\]"),
+        encode_markdown_link_target(relative_link),
+        record.description.replace('\n', " "),
+        record.original_path,
+        record.sha256,
+        record.bytes,
+        record.mime_type,
+        RECORD_PREFIX,
+        serde_json::to_string(record)?,
+        RECORD_SUFFIX
+    ))
+}
+
+/// Percent-encode a relative URL while retaining path separators. Markdown
+/// destinations are URLs, so any byte outside RFC 3986's unreserved set must
+/// be encoded rather than emitted literally.
+fn encode_markdown_link_target(path: &str) -> String {
+    let mut encoded = String::with_capacity(path.len());
+    for byte in path.as_bytes() {
+        match byte {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'.' | b'_' | b'~' | b'/' => {
+                encoded.push(*byte as char)
+            }
+            _ => {
+                encoded.push('%');
+                encoded.push(hex(byte >> 4));
+                encoded.push(hex(byte & 0x0f));
+            }
+        }
+    }
+    encoded
+}
+
+fn hex(nibble: u8) -> char {
+    match nibble {
+        0..=9 => (b'0' + nibble) as char,
+        _ => (b'A' + (nibble - 10)) as char,
+    }
 }
 
 fn copy_atomic(input: &Path, target: &Path) -> Result<(), Box<dyn std::error::Error>> {
